@@ -1,10 +1,41 @@
+.game-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 1rem 2.5rem;
+  background: linear-gradient(180deg, #7ec8ff 0%, #dff4ff 100%);
+  min-height: 100vh;
+}
+
+.top-bar {
+  width: min(100%, 960px);
+  display: flex;
+  justify-content: flex-start;
+}
+
+.player-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-weight: 700;
+  color: #12304f;
+}
+
+.player-name-field input {
+  min-width: 220px;
+  padding: 0.8rem 1rem;
+  border: 2px solid rgba(18, 48, 79, 0.2);
+  border-radius: 12px;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+}
+
 .game-shell {
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
-  min-height: 100vh;
-  background: linear-gradient(180deg, #7ec8ff 0%, #dff4ff 100%);
 }
 
 canvas {
@@ -14,4 +45,99 @@ canvas {
   border: 4px solid rgba(29, 53, 87, 0.8);
   border-radius: 12px;
   box-shadow: 0 18px 45px rgba(17, 38, 58, 0.18);
+}
+
+.game-controls {
+  width: min(100%, 960px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.score-pill {
+  background: rgba(17, 72, 135, 0.95);
+  color: white;
+  border-radius: 999px;
+  padding: 0.7rem 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.play-again-button {
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffb703, #f77f00);
+  color: #fff;
+  padding: 0.8rem 1.3rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(247, 127, 0, 0.35);
+}
+
+.status-message {
+  width: min(100%, 960px);
+  margin: 0;
+  color: #12304f;
+  font-weight: 600;
+  text-align: left;
+}
+
+.leaderboard-card {
+  width: min(100%, 960px);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(18, 48, 79, 0.12);
+  border-radius: 18px;
+  padding: 1.2rem 1.4rem;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+}
+
+.leaderboard-card h2 {
+  margin: 0 0 1rem;
+  color: #12304f;
+}
+
+.leaderboard-empty {
+  margin: 0;
+  color: #355d82;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 0.8rem 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(18, 48, 79, 0.12);
+}
+
+.leaderboard-table thead {
+  background: rgba(18, 48, 79, 0.05);
+}
+
+.leaderboard-table th {
+  color: #12304f;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.leaderboard-table tbody tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+@media (max-width: 640px) {
+  .game-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .play-again-button {
+    width: 100%;
+  }
 }
