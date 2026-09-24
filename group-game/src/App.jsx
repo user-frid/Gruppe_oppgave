@@ -5,16 +5,18 @@ import { supabase } from './supabaseClient'
 
 function App() {
   const canvasRef = useRef(null)
-  const playerNameRef = useRef('')
-  const [playerName, setPlayerName] = useState('')
+  const usernameRef = useRef('')
+  const kaplayRef = useRef(null)
+  const resetGameRef = useRef(null)
+
+  const [username, setUsername] = useState('')
   const [score, setScore] = useState(0)
   const [leaderboard, setLeaderboard] = useState([])
-  const [gameKey, setGameKey] = useState(0)
   const [statusMessage, setStatusMessage] = useState('')
 
   useEffect(() => {
-    playerNameRef.current = playerName
-  }, [playerName])
+    usernameRef.current = username
+  }, [username])
 
   const fetchLeaderboard = useCallback(async () => {
     if (!supabase) {
@@ -22,27 +24,36 @@ function App() {
       return
     }
 
-    const { data, error } = await supabase
-      .from('scores')
-      .select('id, name, score')
-      .order('score', { ascending: false })
-      .limit(5)
+    try {
+      const { data, error } = await supabase
+        .from('scores')
+        .select('id, username, score')
+        .order('score', { ascending: false })
+        .limit(10)
 
-    if (error) {
+      if (error) {
+        throw error
+      }
+
+      setLeaderboard(data ?? [])
+    } catch (error) {
       console.error('Leaderboard fetch error:', error)
-      return
+      setLeaderboard([])
     }
-
-    setLeaderboard(data ?? [])
   }, [])
 
   useEffect(() => {
     fetchLeaderboard()
   }, [fetchLeaderboard])
 
-  useEffect(() => {
+  const createGame = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+
+    if (kaplayRef.current) {
+      kaplayRef.current.quit()
+      kaplayRef.current = null
+    }
 
     const k = kaplay({
       canvas,
@@ -53,12 +64,13 @@ function App() {
       letterbox: true,
     })
 
+    kaplayRef.current = k
+
     const FLOOR_Y = 470
     const MOVE_SPEED = 240
     const JUMP_FORCE = 540
     let gameOver = false
     let elapsedScore = 0
-    let scoreLabel = null
 
     for (let x = 0; x < k.width(); x += 64) {
       k.add([
@@ -66,7 +78,7 @@ function App() {
         k.rect(64, 70),
         k.color(76, 175, 80),
         k.area(),
-        k.static(),
+        k.body({ isStatic: true }),
         'floor',
       ])
     }
@@ -80,7 +92,7 @@ function App() {
       'player',
     ])
 
-    scoreLabel = k.add([
+    const scoreLabel = k.add([
       k.text('Score: 0', { size: 22 }),
       k.pos(18, 18),
       k.color(255, 255, 255),
@@ -97,8 +109,34 @@ function App() {
     const updateScoreText = (value) => {
       const nextScore = Math.max(0, Math.floor(value))
       setScore(nextScore)
-      if (scoreLabel) {
-        scoreLabel.text = `Score: ${nextScore}`
+      scoreLabel.text = `Score: ${nextScore}`
+    }
+
+    const saveScore = async (finalScore) => {
+      if (!supabase) {
+        setStatusMessage('Supabase is not configured yet. Add your env vars to save scores.')
+        return
+      }
+
+      try {
+        setStatusMessage('Saving score...')
+
+        const { error } = await supabase.from('scores').insert([
+          {
+            username: usernameRef.current.trim() || 'Anonymous',
+            score: finalScore,
+          },
+        ])
+
+        if (error) {
+          throw error
+        }
+
+        setStatusMessage(`Saved ${usernameRef.current.trim() || 'Anonymous'}'s score: ${finalScore}`)
+        await fetchLeaderboard()
+      } catch (error) {
+        console.error('Error saving score:', error)
+        setStatusMessage('The score could not be uploaded right now.')
       }
     }
 
@@ -119,38 +157,7 @@ function App() {
         k.color(255, 255, 255),
       ])
 
-      const nameToSave = playerNameRef.current.trim() || 'Player'
-
-      if (!supabase) {
-        setStatusMessage('Supabase is not configured yet. Add your env vars to save scores.')
-        return
-      }
-
-      if (!nameToSave) {
-        setStatusMessage('Please enter a player name before starting the game.')
-        return
-      }
-
-      try {
-        setStatusMessage('Saving score...')
-
-        const { error } = await supabase.from('scores').insert([
-          {
-            name: nameToSave,
-            score: finalScore,
-          },
-        ])
-
-        if (error) {
-          throw error
-        }
-
-        setStatusMessage(`Saved ${nameToSave}'s score: ${finalScore}`)
-        await fetchLeaderboard()
-      } catch (error) {
-        console.error('Error saving score:', error)
-        setStatusMessage('The score could not be uploaded right now.')
-      }
+      await saveScore(finalScore)
     }
 
     k.onUpdate(() => {
@@ -193,38 +200,61 @@ function App() {
       })
     })
 
-    player.onCollide('obstacle', finishRound)
+    player.onCollide('obstacle', () => {
+      finishRound()
+    })
 
     k.onKeyPress('r', () => {
-      if (gameOver) {
-        setGameKey((current) => current + 1)
+      if (gameOver && resetGameRef.current) {
+        resetGameRef.current()
       }
     })
 
+    const resetCurrentGame = () => {
+      if (kaplayRef.current) {
+        kaplayRef.current.quit()
+      }
+
+      kaplayRef.current = null
+      createGame()
+    }
+
+    resetGameRef.current = resetCurrentGame
+  }, [fetchLeaderboard])
+
+  useEffect(() => {
+    const alreadyCreated = kaplayRef.current
+    if (alreadyCreated) return
+
+    createGame()
+
     return () => {
-      if (typeof k.quit === 'function') {
-        k.quit()
+      if (kaplayRef.current) {
+        kaplayRef.current.quit()
+        kaplayRef.current = null
       }
     }
-  }, [gameKey, fetchLeaderboard])
+  }, [createGame])
 
   const handlePlayAgain = () => {
     setScore(0)
     setStatusMessage('')
-    setGameKey((current) => current + 1)
+    if (resetGameRef.current) {
+      resetGameRef.current()
+    }
   }
 
   return (
     <div className="game-page">
       <div className="top-bar">
         <label className="player-name-field">
-          <span>Player name</span>
+          <span>Username</span>
           <input
             type="text"
-            value={playerName}
-            onChange={(event) => setPlayerName(event.target.value)}
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
             maxLength={20}
-            placeholder="Enter your name"
+            placeholder="Enter your username"
           />
         </label>
       </div>
@@ -252,15 +282,15 @@ function App() {
             <thead>
               <tr>
                 <th>#</th>
-                <th>Name</th>
+                <th>Username</th>
                 <th>Score</th>
               </tr>
             </thead>
             <tbody>
               {leaderboard.map((entry, index) => (
-                <tr key={entry.id ?? `${entry.name}-${index}`}>
+                <tr key={entry.id ?? `${entry.username}-${index}`}>
                   <td>{index + 1}</td>
-                  <td>{entry.name}</td>
+                  <td>{entry.username}</td>
                   <td>{entry.score}</td>
                 </tr>
               ))}
